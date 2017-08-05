@@ -5,21 +5,41 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from bittrex import Bittrex
+from req_cryptopia import reqCryptopia
 
 class bittrexTracker():
-    def setup(self):
+    def __init__(self):
         with open("apikeys.json") as apikeys:
             self.keys = json.load(apikeys)
             apikeys.close()
-        self.bittrex = Bittrex(self.keys['key'], self.keys['secret'])
-
-    #Have to withdraw from pool or wallet here
-    def depositFunds(self, address):
-        print(address)
+        for key in self.keys['APIs']:
+            if key['exchange'] == 'Bittrex':
+                self.bittrex = Bittrex(key['key'], key['secret'])
+        self.cryptopia = reqCryptopia()
+        
+    #Withdraw funds from cryptopia wallet to address
+    def depositFunds(self, coin, address):
+        self.cryptopia.handle_withdraw(coin, address)
 
     #Check wallet to see if funds arrived, once they have sell at price
-    def sellFundsOnceArrived(self, coin, price):
-        print(coin)
+    def sellFundsOnceArrived(self, coin, price, amount=None):
+        while True:
+            status = "TRANSFER IN PROGRESS"
+            curr_balance = self.bittrex.get_balance(coin)
+            bal = curr_balance["result"]["Available"]
+            if bal > 0:
+                status = "Funds have arrived"
+                break
+            else:
+                print(status)
+            time.sleep(1)
+        print(status + ", " + bal + coin + "in account")
+        
+        market = "BTC-" + coin
+        if amount and amount <= bal:
+            print(self.bittrex.sell_limit(market, amount, price))
+        else:
+            print(self.bittrex.sell_limit(market, bal, price))
 
     def sendNotification(self, coin, addr):
         with open("emaillogin.json") as loginInfo:
@@ -50,10 +70,10 @@ class bittrexTracker():
             for res in currencies:
                 if res['Currency'] == coin:
                     coin_found = res
-            print(coin_found);
+            print(coin_found)
             if coin_found != "NOT FOUND":
                 break
-            time.sleep(5)
+            time.sleep(30)
         #When found keep trying to get addr - Needs to generate on first attempt
         while True:
             try:
@@ -63,9 +83,9 @@ class bittrexTracker():
                 time.sleep(2)
             else:
                 break
-        #self.depositFunds(addr)
         self.sendNotification(coin, addr)
+        self.depositFunds(coin, addr)
+        self.sellFundsOnceArrived(coin, 0.00005000)
 
 notifier = bittrexTracker()
-notifier.setup()
 notifier.checkIfListed('SIGT')

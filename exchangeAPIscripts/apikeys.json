@@ -1,0 +1,15 @@
+{
+  "APIs":
+  [
+    {
+      "exchange": "Bittrex",
+      "key": "key",
+      "secret": "secret"
+    },
+    {
+      "exchange": "Cryptopia",
+      "key": "key",
+      "secret": "secret"
+    }
+  ]
+}
